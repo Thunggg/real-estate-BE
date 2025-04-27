@@ -2,35 +2,49 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AuthRequest;
+use App\Services\AuthService;
+use App\Traits\ApiResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Cookie;
 
 
 class AuthController extends Controller
 {
+    use ApiResponse;
 
-    public function __construct()
+    private $authService;
+
+    public function __construct(AuthService $authService)
     {
-        // $this->middleware('auth:api', ['except' => ['login']]);
+        $this->authService = $authService;
     }
 
     public function login(AuthRequest $request)
     {
-        $credentials = $request->only(['email', 'password']);
-
-        if (!$token = auth()->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        try {
+            $res = $this->authService->login($request->validated());
+            return $this->successResponse(
+                [
+                    'access_token' => $res['token'],
+                    'token_type' => 'bearer',
+                    'expires_in' => $res['expires_in']
+                ],
+                'Đăng nhập thành công!',
+                Response::HTTP_OK,
+            )->withCookie($res['cookie']);
+        } catch (ApiException $e) {
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getCode(),
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getCode()
+            );
         }
-
-        return $this->respondWithToken($token);
-    }
-    protected function respondWithToken($token)
-    {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 1
-        ]);
     }
 }
