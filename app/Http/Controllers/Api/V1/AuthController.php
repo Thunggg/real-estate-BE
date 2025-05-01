@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AuthRequest;
+use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use App\Traits\ApiResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,10 +31,11 @@ class AuthController extends Controller
                 [
                     'access_token' => $res['token'],
                     'token_type' => 'bearer',
-                    'expires_in' => $res['expires_in']
+                    'expires_in' => $res['expires_in'],
+                    'user' => $res['user']
                 ],
                 'Đăng nhập thành công!',
-                Response::HTTP_OK,
+                Response::HTTP_OK
             )->withCookie($res['cookie']);
         } catch (ApiException $e) {
             return $this->errorResponse(
@@ -46,5 +48,14 @@ class AuthController extends Controller
                 $e->getCode()
             );
         }
+    }
+
+    public function me()
+    {
+        return $this->successResponse(
+            new UserResource(auth()->user()),
+            'Đăng nhập thành công!',
+            Response::HTTP_OK
+        );
     }
 }

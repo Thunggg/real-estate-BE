@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ApiException;
+use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,22 +16,27 @@ class AuthService
             throw new ApiException('Sai tài khoản hoặc mật khẩu!', Response::HTTP_UNAUTHORIZED);
         }
 
+        $ttl = auth()->factory()->getTTL(); // Lấy thời gian sống của token (phút)
+
         $cookie = cookie(
             'access_token',
             $token,
-            auth()->factory()->getTTL() * 1,
-            '/', // path
-            null, // domain
-            app()->environment('production'), // nếu production thì secure=true
-            true, // httpOnly
-            false, // raw
-            'Strict' // sameSite policy
+            $ttl, // Sử dụng TTL theo phút (không cần nhân với 60 * 24)
+            '/',
+            null,
+            true,     // Không dùng HTTPS
+            true,      // httpOnly
+            false,     // raw
+            'none'     // SameSite=None để cho phép cross-site
         );
+
+        $user = auth()->user(); // trả về thông tin của người dùng
 
         return [
             'token' => $token,
             'cookie' => $cookie,
-            'expires_in' => Auth::factory()->getTTL() * 1
+            'expires_in' => $ttl * 60, // chuyển thành giây
+            'user' => new UserResource($user),
         ];
     }
 }
